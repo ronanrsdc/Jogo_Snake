@@ -1,20 +1,62 @@
 //Seleçãos dos objetos html para uso no js
 const canvas = document.querySelector("canvas")
 const ctx = canvas.getContext('2d')
+const h2 = document.querySelector("h2")
 
-//Definição cobra
+const score = document.querySelector('.score--value')
+const finalScore = document.querySelector('.final-score > span')
+const menu = document.querySelector('.menu-screen')
+const buttonPlay = document.querySelector('.btn-play')
+
+const audio = new Audio("../assets/audio.mp3")
+
 const size = 30
 
-//Criando Cobra
-const snake = [
-    { x: 0, y: 0 },
+const initialPosition = { x: 270, y: 240 }
+
+let direction, loopId = ''
+
+let snake = [
+    { x: 270, y: 240 }
 ]
 
-//Definição de direção da cobra
-let direction, loopid = ""
+const incrementScore = () =>{
+    score.innerText = +score.innerText + 10
+}
 
+const randomNumber = (min, max) => {
+    return Math.round(Math.random() * (max - min) + min)
+}
 
-//Função Desenho da cobra
+const randomPosition = () => {
+    const number = randomNumber(0, canvas.width - size)
+    return Math.round(number / 30) * 30
+}
+
+const randomColor = () => {
+    const red = randomNumber(0, 255)
+    const green = randomNumber(0, 255)
+    const blue = randomNumber(0, 255)
+
+    return `rgb(${red},${green},${blue})`
+}
+
+const food = {
+    x: randomPosition(),
+    y: randomPosition(),
+    color: randomColor()
+}
+
+const drawFood = () => {
+
+    const { x, y, color } = food
+    ctx.shadowColor = color
+    ctx.shadowBlur = 6
+    ctx.fillStyle = color
+    ctx.fillRect(x, y, size, size)
+    ctx.shadowBlur = 0
+}
+
 const drawSnake = () => {
     ctx.fillStyle = '#ddd'
     snake.forEach((position, index) => {
@@ -27,7 +69,6 @@ const drawSnake = () => {
     })
 }
 
-//Função movimento da cobra
 const moveSnake = () => {
     if (!direction) return
 
@@ -52,7 +93,7 @@ const moveSnake = () => {
     }
 
 }
-//Desenhando grade no jogo
+
 const drawGrid = () => {
     ctx.lineWidth = 1
     ctx.strokeStyle = "#191919"
@@ -66,29 +107,77 @@ const drawGrid = () => {
 
         ctx.beginPath()
         ctx.lineTo(0, i)
-        ctx.lineTo(600,i)
+        ctx.lineTo(600, i)
         ctx.stroke()
 
     }
 }
-//Logica de funcionamento - game
+
+const checkEat = () => {
+    const headSnake = snake[snake.length - 1]
+
+    if (headSnake.x == food.x && headSnake.y == food.y) {
+        incrementScore()
+        snake.push(headSnake)
+        audio.play()
+
+        let x = randomPosition()
+        let y = randomPosition()
+
+        while (snake.find((position) => position.x == x && position.y == y)) {
+            x = randomPosition()
+            y = randomPosition()
+        }
+
+        food.x = x
+        food.y = y
+        food.color = randomColor()
+    }
+}
+
+const checkCollision = () => {
+    const headSnake = snake[snake.length - 1]
+    const canvasLimit = canvas.width - size
+    const neckIndex = snake.length - 2
+
+
+    const wallCollision = headSnake.x < 0 || headSnake.x > 570 || headSnake.y < 0 || headSnake.y > 570
+
+    const selfCollision = snake.find((position, index) => {
+        return index < neckIndex && position.x == headSnake.x && position.y == headSnake.y
+
+    })
+
+    if (wallCollision || selfCollision) {
+        gameOver()
+    }
+}
+
+const gameOver = () => {
+    direction = undefined
+    menu.style.display = 'flex'
+    finalScore.innerText = score.innerText
+    canvas.style.filter = "blur(2px"
+
+}
+
 const gameLoop = () => {
-    clearInterval(loopid)
+    clearInterval(loopId)
 
     ctx.clearRect(0, 0, 600, 600)
     drawGrid()
+    drawFood()
     moveSnake()
     drawSnake()
+    checkEat()
+    checkCollision()
 
-    loopid = setTimeout(() => {
+    loopId = setTimeout(() => {
         gameLoop()
     }, 300);
 
 }
 
-//gameLoop()
-
-//Lendo eventos de teclado
 document.addEventListener("keydown", ({ key }) => {
     if (key == "ArrowRight" && direction != "left") {
         direction = "right"
@@ -108,4 +197,12 @@ document.addEventListener("keydown", ({ key }) => {
 
 })
 
+document.addEventListener("click",()=>{
+    score.innerText = "00"
+    menu.style.display = "none"
+    canvas.style.filter = "none"
+
+    snake = [initialPosition]
+
+})
 gameLoop()
